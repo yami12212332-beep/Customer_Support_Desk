@@ -99,7 +99,9 @@ flowchart TD
 │   └── run_evals.py
 ├── tests/
 ├── data/
-│   └── seed.sql               # mocked billing/account data
+│   |── seed.sql               # mocked billing/account 
+|   ├── schema.sql   
+data
 ├── docker/
 ├── .github/workflows/
 ├── requirements.txt
