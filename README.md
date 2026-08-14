@@ -80,32 +80,37 @@ flowchart TD
 ```
 .
 ├── app/
+│   ├── db/
+│   │   ├── connection.py        DB pool
+│   │   └── billing_tools.py     Billing queries
 │   ├── graph/
-│   │   ├── state.py          # GraphState schema
-│   │   ├── orchestrator.py   # classifier + router + synthesis nodes
+│   │   ├── state.py             Graph state
+│   │   ├── orchestrator.py      Routing + synthesis
 │   │   ├── agents/
-│   │   │   ├── billing.py
-│   │   │   ├── technical.py
-│   │   │   ├── account.py
-│   │   │   └── escalation.py
-│   │   └── graph.py          # graph assembly
-│   ├── tools/                # mocked tool implementations
-│   ├── guardrails/
+│   │   │   ├── billing.py       Next step
+│   │   │   ├── technical.py     Not started
+│   │   │   ├── account.py       Not started
+│   │   │   └── escalation.py    Not started
+│   │   └── graph.py             Graph assembly
+│   ├── tools/                   Non-billing tools
+│   ├── guardrails/              Not started
 │   └── api/
-│       ├── main.py           # FastAPI app
-│       └── review.py         # reviewer/approval endpoints
+│       ├── main.py              FastAPI app
+│       └── review.py            Approval endpoints
 ├── evals/
-│   ├── datasets/              # labeled test cases
-│   └── run_evals.py
-├── tests/
+│   ├── datasets/                25 scenarios
+│   └── run_evals.py             Not started
+├── tests/                       Not started
 ├── data/
-│   |── seed.sql               # mocked billing/account 
-|   ├── schema.sql   
-data
-├── docker/
-├── .github/workflows/
-├── requirements.txt
-└── README.md
+│   ├── schema.sql                Not uploaded
+│   ├── seed_data.sql             Not uploaded
+│   ├── seed_data_bulk.sql        Not uploaded
+│   ├── fix_gaps_step1_enum.sql   Not uploaded
+│   └── fix_gaps_step2_data.sql   Not uploaded
+├── docker/                       Not started
+├── .github/workflows/            Not started
+├── requirements.txt               Not frozen yet
+└── README.md                      Exists
 ```
 
 ---
