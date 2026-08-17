@@ -25,7 +25,7 @@ def merge_unique_list(current: list[str], update: list[str]) -> list[str]:
 
 class AgentOutput(BaseModel):
     agent_name: str
-    summnary: str = Field(..., description="Natural-language summary for synthesis")
+    summary: str = Field(..., description="Natural-language summary for synthesis")
     structured_data: dict = Field(default_factory=dict)
     requires_approval: bool = False
     proposed_action: Optional[dict] = None
