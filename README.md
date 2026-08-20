@@ -63,7 +63,7 @@ flowchart TD
 |---|---|
 | Orchestration | LangGraph |
 | Agent/tool framework | LangChain |
-| LLM | Claude (Anthropic API) |
+| LLM (Gemini API) |
 | Observability & tracing | LangSmith |
 | Evaluations | LangSmith Evaluations / custom harness |
 | API layer | FastAPI |
@@ -125,13 +125,13 @@ pip install -r requirements.txt
 
 # environment variables
 cp .env.example .env
-# set ANTHROPIC_API_KEY, LANGSMITH_API_KEY, DATABASE_URL
+# set GEMINI_API_KEY, LANGSMITH_API_KEY, DATABASE_URL
 
 # run the API
 uvicorn app.api.main:app --reload
 ```
 
-Requirements: Python 3.11+, an Anthropic API key, and (optional but recommended) a LangSmith account for tracing.
+Requirements: Python 3.11+, an Gemini API key, and (optional but recommended) a LangSmith account for tracing.
 
 ---
 
