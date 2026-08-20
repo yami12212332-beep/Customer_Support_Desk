@@ -42,7 +42,7 @@ class IntentClassification(BaseModel):
     """Classifier node output"""
     intents: list[Literal["billing", "technical", "account", "escalation"]]
     confidence: float = Field(..., ge=0.0, le=1.0)
-    sentiment = Literal["neutral", "frustrated", "angry"]
+    sentiment: Literal["neutral", "frustrated", "angry"]
     reasoning: str
 
 class GraphState(BaseModel):
@@ -51,7 +51,7 @@ class GraphState(BaseModel):
 
     intents: list[Literal["billing", "technical", "account", "escalation"]] = Field(default_factory=list)
     routing_confidence: float = 0.0
-    sentiment: Literal["neutral", "frustrated", "angry"] = "netrual"
+    sentiment: Literal["neutral", "frustrated", "angry"] = "neutral"
 
     agent_outputs: Annotated[dict[str, AgentOutput], merge_dicts] = Field(default_factory=dict)
     agent_to_run: list[str] = Field(default_factory=list)

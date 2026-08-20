@@ -7,7 +7,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
 from langgraph.types import interrupt
 
-from app.db import billing_tool
+from app.db import billing_tools
 from app.graph.state import GraphState, AgentOutput, ApprovalRequest
 
 def build_billing_tools(pool: asyncpg.Pool, customer_id: int):
@@ -21,20 +21,20 @@ def build_billing_tools(pool: asyncpg.Pool, customer_id: int):
     @tool
     async def get_invoice(invoice_id: int) -> str:
         """Look up a single invoice by ID for the cuncurrent customer."""
-        result = await billing_tool.get_invoice(pool, customer_id, invoice_id)
-        return json.dumps(result) if result else "Invoice not found"
+        result = await billing_tools.get_invoice(pool, customer_id, invoice_id)
+        return json.dumps(result, default=str) if result else "Invoice not found"
 
     @tool
     async def get_payment_history(account_id: Optional[int] = None, limit: int = 10) -> str:
         """Get recent invoices for the current customer, optionally for one account."""
-        result = await billing_tool.get_payment_history(pool, customer_id, account_id, limit)
-        return json.dumps(result)
+        result = await billing_tools.get_payment_history(pool, customer_id, account_id, limit)
+        return json.dumps(result, default=str)
 
     @tool
     async def check_duplicate(invoice_id: int) -> str:
         """Check whether an invoice is a genuine duplicate charge (ground truth, not inferred from amount/date matching)."""
-        result = await billing_tool.check_duplicate(pool, customer_id, invoice_id)
-        return json.dumps(result)
+        result = await billing_tools.check_duplicate(pool, customer_id, invoice_id)
+        return json.dumps(result, default=str)
 
     @tool
     async def propose_refund(invoice_id: int, amount_cents: int, reason: str, risk_level: str) -> str:
@@ -43,7 +43,7 @@ def build_billing_tools(pool: asyncpg.Pool, customer_id: int):
         it only records a proposal for the approval gate. risk_level must be
         one of: low, medium, high.
         """
-        return json.dump({
+        return json.dumps({
             "invoice_id": invoice_id,
             "amount_cents": amount_cents,
             "reason": reason,
@@ -77,7 +77,7 @@ async def billing_agent_node(state: GraphState, pool: asyncpg.Pool) -> dict:
     """
     tools = build_billing_tools(pool, state.user_id)
     llm = ChatGoogleGenerativeAI(model = "gemini-3.5-flash-lite").bind_tools(tools)
-    tools_by_name = {t.name for t in tools}
+    tools_by_name = {t.name: t for t in tools}
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -111,7 +111,7 @@ async def billing_agent_node(state: GraphState, pool: asyncpg.Pool) -> dict:
     # --- no refund proposed: read-only path, no approval needed ---
     if proposed_action is None:
         return {
-            "agent_output": {
+            "agent_outputs": {
                 "billing": AgentOutput(
                     agent_name="billing",
                     summary=final_summary or "Investigated billing query; no action needed.",
@@ -136,9 +136,9 @@ async def billing_agent_node(state: GraphState, pool: asyncpg.Pool) -> dict:
     # so re-execution on resume is safe. See spike + module docstring.
     decision = interrupt(approval_request.model_dump())
 
-    if decision.get("Status") == "approved":
+    if decision.get("status") == "approved":
         # Executed directly by trusted app code, NOT delegated back to the LLM.
-        refund_result = await billing_tool.issue_refund(
+        refund_result = await billing_tools.issue_refund(
             pool,
             state.user_id,
             proposed_action["invoice_id"],

@@ -10,7 +10,7 @@ async def get_invoice(pool: asyncpg.Pool, customer_id: int, invoice_id: int) -> 
     """
     query = """
         SELECT i.invoice_id, i.account_id, i.subscription_id, i.amount_cents,
-            i.status, i.duplicate_of_invoice_id, i.created_at
+            i.status, i.duplicate_of_invoice_id, i.issued_at
         FROM invoices i
         JOIN accounts a ON a.account_id = i.account_id
         WHERE a.customer_id = $1 AND i.invoice_id = $2
@@ -29,22 +29,22 @@ async def get_payment_history(pool: asyncpg.Pool, customer_id: int, account_id: 
     if account_id is not None:
         query = """
             SELECT i.invoice_id, i.account_id, i.amount_cents, i.status,
-                   i.duplicate_of_invoice_id, i.created_at
+                   i.duplicate_of_invoice_id, i.issued_at
             FROM invoices i
             JOIN accounts a ON a.account_id = i.account_id
             WHERE a.customer_id = $1 AND i.account_id = $2
-            ORDER BY i.created_at DESC
+            ORDER BY i.issued_at DESC
             LIMIT $3
         """
         args = (customer_id, account_id, limit)
     else:
         query = """
             SELECT i.invoice_id, i.account_id, i.amount_cents, i.status,
-                   i.duplicate_of_invoice_id, i.created_at
+                   i.duplicate_of_invoice_id, i.issued_at
             FROM invoices i
             JOIN accounts a ON a.account_id = i.account_id
             WHERE a.customer_id = $1
-            ORDER BY i.created_at DESC
+            ORDER BY i.issued_at DESC
             LIMIT $2
         """
         args = (customer_id, limit)
