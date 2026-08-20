@@ -63,7 +63,7 @@ flowchart TD
 |---|---|
 | Orchestration | LangGraph |
 | Agent/tool framework | LangChain |
-| LLM (Gemini API) |
+| LLM | (Gemini API) |
 | Observability & tracing | LangSmith |
 | Evaluations | LangSmith Evaluations / custom harness |
 | API layer | FastAPI |
