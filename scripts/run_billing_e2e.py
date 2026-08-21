@@ -19,7 +19,7 @@ async def main():
     async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URL"]) as checkpointer:
         await checkpointer.setup()
 
-        thread_id = "e2e-test-thread-2"
+        thread_id = "e2e-test-thread-3"
         print("\n=== PHASE 1: submitting billing query (real LLM + real DB) ===")
         result = await run_billing_turn(
             pool, checkpointer, thread_id,

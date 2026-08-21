@@ -8,6 +8,7 @@ from langchain_core.tools import tool
 from langgraph.types import interrupt
 
 from app.db import billing_tools
+from app.graph.agents.llm import get_llm
 from app.graph.state import GraphState, AgentOutput, ApprovalRequest
 
 def build_billing_tools(pool: asyncpg.Pool, customer_id: int):
@@ -76,7 +77,7 @@ async def billing_agent_node(state: GraphState, pool: asyncpg.Pool) -> dict:
     registered, since a DB pool doesn't belong in checkpointed graph state.
     """
     tools = build_billing_tools(pool, state.user_id)
-    llm = ChatGoogleGenerativeAI(model = "gemini-3.5-flash-lite").bind_tools(tools)
+    llm = get_llm("billing").bind_tools(tools)
     tools_by_name = {t.name: t for t in tools}
 
     messages = [
