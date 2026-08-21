@@ -54,7 +54,7 @@ class GraphState(BaseModel):
     sentiment: Literal["neutral", "frustrated", "angry"] = "neutral"
 
     agent_outputs: Annotated[dict[str, AgentOutput], merge_dicts] = Field(default_factory=dict)
-    agent_to_run: list[str] = Field(default_factory=list)
+    agents_to_run: list[str] = Field(default_factory=list)
     agents_completed: Annotated[list[str], merge_unique_list] = Field(default_factory=list)
 
     pending_approvals: Annotated[dict[str, ApprovalRequest], merge_dicts] = Field(default_factory=dict)
