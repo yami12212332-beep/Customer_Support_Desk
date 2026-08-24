@@ -103,7 +103,7 @@ async def close_account(pool: asyncpg.Pool, customer_id: int, account_id: int, r
                 raise ValueError(f"Account {account_id} is alredy canceled.")
 
             await conn.execute(
-                "UPDATE accounts SET state = 'canceled, closed_at = now() WHERE account_id = $1",
+                "UPDATE accounts SET status = 'canceled', closed_at = now() WHERE account_id = $1",
                 account_id,
             )
 
