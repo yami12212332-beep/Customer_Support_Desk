@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 from langgraph.types import interrupt
 
 from app.db import billing_tools
-from app.graph.agents.llm import get_llm
+from app.graph.llm import get_llm
 from app.graph.state import GraphState, AgentOutput, ApprovalRequest
 
 def build_billing_tools(pool: asyncpg.Pool, customer_id: int):
