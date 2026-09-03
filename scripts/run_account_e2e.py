@@ -18,8 +18,8 @@ from app.graph.state import GraphState
 from app.graph.agents.account import make_account_node
  
 # Adjust to match a real customer/account in your seed data.
-TEST_USER_ID = 4
-TEST_ACCOUNT_ID = 4
+TEST_USER_ID = 8
+TEST_ACCOUNT_ID = 8
  
  
 def build_account_only_graph(pool, checkpointer):
@@ -32,7 +32,11 @@ def build_account_only_graph(pool, checkpointer):
  
 async def run_one_cycle(pool, checkpointer, thread_id: str, user_query: str, label: str):
     graph = build_account_only_graph(pool, checkpointer)
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "tags": ["accounts", "e2e-manual-run"],
+        "metadata": {"user_id": TEST_USER_ID, "thread_id": thread_id},
+    }
  
     print(f"\n{'='*70}\n{label} — PHASE 1: submitting query\n{'='*70}")
     print(f"query: {user_query}")
@@ -63,7 +67,7 @@ async def main():
         # --- Cycle 1: account closure ---
         await run_one_cycle(
             pool, checkpointer,
-            thread_id="account-e2e-closure-2",
+            thread_id="account-e2e-closure-3",
             user_query=f"Please close account {TEST_ACCOUNT_ID}, I don't need it anymore.",
             label="CLOSURE",
         )
@@ -76,7 +80,7 @@ async def main():
         # runner deterministic for a first pass.
         await run_one_cycle(
             pool, checkpointer,
-            thread_id="account-e2e-paymethod-2",
+            thread_id="account-e2e-paymethod-3",
             user_query=f"Can you remove the payment method on account that is expired.",
             label="PAYMENT METHOD REMOVAL",
         )
