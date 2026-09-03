@@ -31,7 +31,11 @@ async def run_billing_turn(
     or an interrupt payload (approval needed, caller must resume later).
     """
     graph = await build_billing_only_graph(pool, checkpointer)
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "tags": ["billing", "e2e-manual-run"],
+        "metadata": {"user_id": user_id, "thread_id": thread_id},
+    }
     result = await graph.ainvoke(
         GraphState(user_query=user_query, user_id=user_id, trace_id=thread_id),
         config=config,
@@ -43,6 +47,7 @@ async def resume_billing_turn(
         checkpointer: AsyncPostgresSaver,
         thread_id: str,
         decision_status: str,
+        user_id: int,
 ) -> dict:
     """
     Resumes a PAUSED billing conversation (one that previously returned an
@@ -52,7 +57,11 @@ async def resume_billing_turn(
     from langgraph.types import Command
 
     graph = await build_billing_only_graph(pool, checkpointer)
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "tags": ["billing", "e2e-manual-run"],
+        "metadata": {"user_id": user_id, "thread_id": thread_id}
+    }
     result = await graph.ainvoke(
         Command(resume={"status":decision_status}),
         config=config,
