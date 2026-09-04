@@ -9,50 +9,40 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
  
-from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.types import Command
  
 from app.db.connection import init_pool, close_pool
-from app.graph.state import GraphState
-from app.graph.agents.account import make_account_node
+from app.graph.graph import run_account_turn, resume_account_turn
  
 # Adjust to match a real customer/account in your seed data.
-TEST_USER_ID = 8
-TEST_ACCOUNT_ID = 8
- 
- 
-def build_account_only_graph(pool, checkpointer):
-    g = StateGraph(GraphState)
-    g.add_node("account", make_account_node(pool))
-    g.set_entry_point("account")
-    g.add_edge("account", END)
-    return g.compile(checkpointer=checkpointer)
+TEST_USER_ID = 3
+TEST_ACCOUNT_ID = 3
  
  
 async def run_one_cycle(pool, checkpointer, thread_id: str, user_query: str, label: str):
-    graph = build_account_only_graph(pool, checkpointer)
-    config = {
-        "configurable": {"thread_id": thread_id},
-        "tags": ["accounts", "e2e-manual-run"],
-        "metadata": {"user_id": TEST_USER_ID, "thread_id": thread_id},
-    }
- 
     print(f"\n{'='*70}\n{label} — PHASE 1: submitting query\n{'='*70}")
     print(f"query: {user_query}")
  
-    result = await graph.ainvoke(
-        GraphState(user_query=user_query, user_id=TEST_USER_ID, trace_id=thread_id),
-        config=config,
+    result = await run_account_turn(
+        pool, checkpointer, thread_id,
+        user_id=TEST_USER_ID,
+        user_query=user_query,
     )
  
     if "__interrupt__" in result:
         payload = result["__interrupt__"][0].value
         print(f"\n✅ Paused for approval. Proposal:\n{payload}")
+        print(f"📧 A real approval email should now be in REVIEWER_EMAIL's inbox.")
  
-        print(f"\n{label} — PHASE 2: simulating reviewer approval")
-        final = await graph.ainvoke(Command(resume={"status": "approved"}), config=config)
-        print(f"\n✅ Resumed. agent_outputs:\n{final['agent_outputs']['account']}")
+        # --- OPTION A: manual resume, bypasses the real email round-trip ---
+        # Comment this block out if you want to test OPTION B instead (see
+        # module docstring) — reply to the real email and let
+        # scripts/run_reply_poller.py pick it up on its own.
+        # print(f"\n{label} — PHASE 2: simulating reviewer approval (manual, bypasses email/poller)")
+        # final = await resume_account_turn(
+        #     pool, checkpointer, thread_id, "approved", user_id=TEST_USER_ID
+        # )
+        # print(f"\n✅ Resumed. agent_outputs:\n{final['agent_outputs']['account']}")
     else:
         print(f"\nNo interrupt raised — agent decided no change was warranted.")
         print(f"agent_outputs:\n{result['agent_outputs']['account']}")
@@ -67,7 +57,7 @@ async def main():
         # --- Cycle 1: account closure ---
         await run_one_cycle(
             pool, checkpointer,
-            thread_id="account-e2e-closure-3",
+            thread_id="account-e2e-closure-1.3",
             user_query=f"Please close account {TEST_ACCOUNT_ID}, I don't need it anymore.",
             label="CLOSURE",
         )
@@ -80,8 +70,8 @@ async def main():
         # runner deterministic for a first pass.
         await run_one_cycle(
             pool, checkpointer,
-            thread_id="account-e2e-paymethod-3",
-            user_query=f"Can you remove the payment method on account that is expired.",
+            thread_id="account-e2e-paymethod-1.3",
+            user_query=f"Can you remove the payment method on account {TEST_ACCOUNT_ID}? It's expired.",
             label="PAYMENT METHOD REMOVAL",
         )
  

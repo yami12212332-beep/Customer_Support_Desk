@@ -1,9 +1,14 @@
 import asyncpg
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.types import Command
 
 from app.graph.state import GraphState
 from app.graph.agents.billing import make_billing_node
+from app.graph.agents.account import make_account_node
+from app.graph.hitl import on_interrupt
+
+# ============================== BILLING ==============================
 
 async def build_billing_only_graph(pool: asyncpg.Pool, checkpointer: AsyncPostgresSaver):
     """
@@ -26,9 +31,10 @@ async def run_billing_turn(
         user_query: str,
 ) -> dict:
     """
-    Starts a NEW billing conversation turn. Returns whatever the graph
-    returns after this invoke — either a final state (no approval needed)
-    or an interrupt payload (approval needed, caller must resume later).
+    Starts a NEW billing conversation turn. If the graph pauses for
+    approval, this is where the approval email actually gets sent — see
+    hitl.py's docstring for why it MUST happen here, in driver code,
+    rather than inside billing_agent_node.
     """
     graph = await build_billing_only_graph(pool, checkpointer)
     config = {
@@ -40,6 +46,10 @@ async def run_billing_turn(
         GraphState(user_query=user_query, user_id=user_id, trace_id=thread_id),
         config=config,
     )
+
+    if "__interrupt__" in result:
+        await on_interrupt(pool, thread_id, user_id, result["__interrupt__"][0].value)
+
     return result
 
 async def resume_billing_turn(
@@ -50,11 +60,12 @@ async def resume_billing_turn(
         user_id: int,
 ) -> dict:
     """
-    Resumes a PAUSED billing conversation (one that previously returned an
-    __interrupt__ from run_billing_turn). This is what the reviewer-facing
-    endpoint (app/api/review.py, not yet built) will call.
+    Resumes a PAUSED billing turn. Called either by a manual script or by
+    hitl.dispatch_resume() once the poller confirms a genuinely new
+    decision. Does NOT call on_interrupt again — a resume run only ever
+    returns __interrupt__ if it hits a SECOND, different interrupt, which
+    doesn't happen in this single-approval-per-turn design.
     """
-    from langgraph.types import Command
 
     graph = await build_billing_only_graph(pool, checkpointer)
     config = {
@@ -64,6 +75,57 @@ async def resume_billing_turn(
     }
     result = await graph.ainvoke(
         Command(resume={"status":decision_status}),
+        config=config,
+    )
+    return result
+
+# ============================== ACCOUNT ==============================
+
+async def build_account_only_graph(pool: asyncpg.Pool, checkpointer: AsyncPostgresSaver):
+    g = StateGraph(GraphState)
+    g.add_node("account", make_account_node(pool))
+    g.set_entry_point("account")
+    g.add_edge("account", END)
+    return g.compile(checkpointer=checkpointer)
+
+async def run_account_turn(
+        pool: asyncpg.Pool,
+        checkpointer: AsyncPostgresSaver,
+        thread_id: str,
+        user_id: int,
+        user_query: str,
+) -> dict:
+    graph = await build_account_only_graph(pool, checkpointer)
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "tags": ["account", "e2e-manual-run"],
+        "metadata": {"user_id": user_id, "thread_id": thread_id},
+    }
+    result = await graph.ainvoke(
+        GraphState(user_query=user_query, user_id=user_id, trace_id=thread_id),
+        config=config
+    )
+
+    if "__interrupt__" in result:
+        await on_interrupt(pool, thread_id, user_id, result["__interrupt__"][0].value)
+
+    return result
+
+async def resume_account_turn(
+        pool: asyncpg.Pool,
+        checkpointer: AsyncPostgresSaver,
+        thread_id: str,
+        decision_status: str,
+        user_id: int,
+) -> dict:
+    graph = await build_account_only_graph(pool, checkpointer)
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "tags": ["account", "e2e-manual-run"],
+        "metadata": {"user_id": user_id, "thread_id": thread_id},
+    }
+    result = await graph.ainvoke(
+        Command(resume={"status": decision_status}),
         config=config,
     )
     return result

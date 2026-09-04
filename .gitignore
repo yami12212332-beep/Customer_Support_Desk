@@ -18,3 +18,7 @@ dist/
 # uv
 .python-version
 uv.lock   # optional — see note below
+
+#Tokens
+credentials.json
+token.json

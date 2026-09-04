@@ -52,6 +52,7 @@ class GraphState(BaseModel):
     intents: list[Literal["billing", "technical", "account", "escalation"]] = Field(default_factory=list)
     routing_confidence: float = 0.0
     sentiment: Literal["neutral", "frustrated", "angry"] = "neutral"
+    escalation_reason: Optional[Literal["low_confidence", "angry_sentiment", "agent_fallback"]] = None
 
     agent_outputs: Annotated[dict[str, AgentOutput], merge_dicts] = Field(default_factory=dict)
     agents_to_run: list[str] = Field(default_factory=list)
