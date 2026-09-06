@@ -121,7 +121,7 @@ async def escalation_agent_node(state: GraphState, pool:asyncpg.Pool) -> dict:
         "agents_completed": ["escalation"],
     }
 
-def make_excalation_node(pool: asyncpg.Pool):
+def make_escalation_node(pool: asyncpg.Pool):
     """Bind the DB pool at graph-assembly time, same pattern as
     make_billing_node / make_account_node."""
     return functools.partial(escalation_agent_node, pool=pool)

@@ -6,6 +6,7 @@ from langgraph.types import Command
 from app.graph.state import GraphState
 from app.graph.agents.billing import make_billing_node
 from app.graph.agents.account import make_account_node
+from app.graph.agents.escalation import make_escalation_node
 from app.graph.hitl import on_interrupt
 
 # ============================== BILLING ==============================
@@ -128,4 +129,50 @@ async def resume_account_turn(
         Command(resume={"status": decision_status}),
         config=config,
     )
+    return result
+
+# ============================== ESCALATION ==============================
+
+async def build_escalation_only_graph(pool: asyncpg.Pool, checkpointer: AsyncPostgresSaver):
+    g = StateGraph(GraphState)
+    g.add_node("escalation", make_escalation_node(pool))
+    g.set_entry_point("escalation")
+    g.add_edge("esacalation", END)
+    return g.compile(checkpointer=checkpointer)
+
+async def run_escalation_turn(
+        pool: asyncpg.Pool,
+        checkpointer: AsyncPostgresSaver,
+        thread_id: str,
+        user_id: int,
+        user_query: str,
+        sentiment: str = "neutral",
+        escalation_reason: str = "agent_fallback",
+        routing_confidence: float = 0.0,
+) -> dict:
+    graph = await build_escalation_only_graph(pool, checkpointer)
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "tags": ["escalation", "e2e-manual-run"],
+        "metadata": {"user_id": user_id, "thread_id": thread_id},
+    }
+    result = await graph.ainvoke(
+        GraphState(
+            user_query=user_query,
+            user_id=user_id,
+            trace_id=thread_id,
+            sentiment=sentiment,
+            escalation_reason=escalation_reason,
+            routing_confidence=routing_confidence,
+        ),
+        config=config,
+    )
+
+    if "__interrupt__" in result:
+        raise RuntimeError(
+            "Escalation graph returned an unexpected __interrupt__ — "
+            "escalation.py is not supposed to pause for approval. "
+            f"Payload: {result['__interrupt__'][0].value}"
+        )
+
     return result
