@@ -10,6 +10,7 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
  
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
  
 from app.db.connection import init_pool, close_pool
 from app.graph.graph import run_account_turn, resume_account_turn
@@ -51,7 +52,11 @@ async def run_one_cycle(pool, checkpointer, thread_id: str, user_query: str, lab
 async def main():
     pool = await init_pool()
  
-    async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URL"]) as checkpointer:
+    serde = JsonPlusSerializer(allowed_msgpack_modules=[
+        ("app.graph.state", "AgentOutput"),
+        ("app.graph.state", "ApprovalRequest"),
+    ])
+    async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URL"], serde=serde) as checkpointer:
         await checkpointer.setup()
  
         # --- Cycle 1: account closure ---
