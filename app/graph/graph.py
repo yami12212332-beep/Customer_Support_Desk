@@ -137,7 +137,7 @@ async def build_escalation_only_graph(pool: asyncpg.Pool, checkpointer: AsyncPos
     g = StateGraph(GraphState)
     g.add_node("escalation", make_escalation_node(pool))
     g.set_entry_point("escalation")
-    g.add_edge("esacalation", END)
+    g.add_edge("escalation", END)
     return g.compile(checkpointer=checkpointer)
 
 async def run_escalation_turn(

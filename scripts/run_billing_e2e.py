@@ -12,13 +12,18 @@ if sys.platform == "win32":
 from app.db.connection import init_pool, close_pool
 from app.graph.graph import run_billing_turn, resume_billing_turn
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 TEST_USER_ID = 2
 
 async def main():
     pool = await init_pool()
 
-    async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URL"]) as checkpointer:
+    serde = JsonPlusSerializer(allowed_msgpack_modules=[
+        ("app.graph.state", "AgentOutput"),
+        ("app.graph.state", "ApprovalRequest"),
+    ])
+    async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URL"], serde=serde) as checkpointer:
         await checkpointer.setup()
 
         thread_id = "e2e-test-thread-4"

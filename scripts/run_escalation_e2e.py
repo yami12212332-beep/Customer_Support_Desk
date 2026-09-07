@@ -4,15 +4,18 @@ import sys
 import warnings
 warnings.filterwarnings("ignore")
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 from app.db.connection import init_pool, close_pool
 from app.graph.graph import run_escalation_turn
 
-TEST_USER_ID = 2
+TEST_USER_ID = 4
 
 async def run_one_cycle(
         pool, checkpointer, thread_id: str, user_query: str, sentiment: str,
@@ -31,7 +34,7 @@ async def run_one_cycle(
         routing_confidence=routing_confidence,
     )
 
-    output = result["agents_outputs"]["escalation"]
+    output = result["agent_outputs"]["escalation"]
     print(f"\nsummary: {output.summary}")
     print(f"structured_data: {output.structured_data}")
 
@@ -50,7 +53,11 @@ async def run_one_cycle(
 async def main():
     pool = await init_pool()
 
-    async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URL"]) as checkpointer:
+    serde = JsonPlusSerializer(allowed_msgpack_modules=[
+        ("app.graph.state", "AgentOutput"),
+        ("app.graph.state", "ApprovalRequest"),
+    ])
+    async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URL"], serde=serde) as checkpointer:
         await checkpointer.setup()
 
         # --- Cycle 1: low-confidence routing fallback ---
@@ -73,6 +80,17 @@ async def main():
             escalation_reason="angry_sentiment",
             routing_confidence=0.9,
             label="ANGRY SENTIMENT",
+        )
+
+        # --- Cycle 3: agent fallback (e.g. billing agent errored) ---
+        await run_one_cycle(
+            pool, checkpointer,
+            thread_id="escalation-e2e-fallback-1",
+            user_query="Can you check invoice 2, I think I was double charged.",
+            sentiment="frustrated",
+            escalation_reason="agent_fallback",
+            routing_confidence=0.85,
+            label="AGENT FALLBACK",
         )
 
         await close_pool()

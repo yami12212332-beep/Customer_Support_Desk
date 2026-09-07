@@ -67,6 +67,7 @@ async def escalation_agent_node(state: GraphState, pool:asyncpg.Pool) -> dict:
         pool,
         customer_id=state.user_id,
         account_id=None,
+        subject=draft.short_description,
         summary=draft.description,
         sentiment=state.sentiment,
         escalation_reason=state.escalation_reason or "unspecified",

@@ -23,12 +23,13 @@ async def get_ticket_history(
     """
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, customer_id, limit)
-    return [dict[r] for r in rows]
+    return [dict(r) for r in rows]
 
 async def create_ticket(
         pool: asyncpg.Pool,
         customer_id: int,
         account_id: Optional[int],
+        subject: str,
         summary: str,
         sentiment: str,
         escalation_reason: str,
@@ -53,14 +54,15 @@ async def create_ticket(
     one account; support_tickets.account_id is nullable for this reason.
     """
     full_summary = f"[{escalation_reason}] {summary}"
+    safe_subject = subject[:200]
     query = """
-        INSERT INTO support_tickets (customer_id, account_id, status, sentiment, summary)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING ticket_id, customer_id, account_id, status, sentiment, summary, created_at
+        INSERT INTO support_tickets (customer_id, account_id, subject, status, sentiment, summary)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING ticket_id, customer_id, account_id, subject, status, sentiment, summary, created_at
     """
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            query, customer_id, account_id, status, sentiment, full_summary
+            query, customer_id, account_id, safe_subject, status, sentiment, full_summary
         )
     return dict(row)
 
